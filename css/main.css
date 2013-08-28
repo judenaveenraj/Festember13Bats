@@ -1,0 +1,36 @@
+#one{
+	position: absolute;
+	left:500px;
+	top:300px;
+	
+	width: 200px;
+	height: 200px;
+	background-color: #ff5656;
+	
+	
+}
+
+
+#two{
+	position: absolute;
+	left:1500px;
+	top:300px;
+	
+	width: 200px;
+	height: 200px;
+	background-color: #68b1ff;
+	
+}
+
+
+.bird{
+	position: absolute;
+	margin: 0px;
+	padding: 0px;
+	background-image: url("../img/bats.png");
+	background-color: transparent;
+
+	width: 50px;
+	height: 35px;
+	
+}
