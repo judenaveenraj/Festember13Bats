@@ -1,0 +1,358 @@
+/*
+
+TODO: dont know how to change addbehavior and createbheavior yet
+*/
+
+
+Jasper.CollisionManager = function () {
+    this._layerNumber_Objects = {};
+    this._layerNum_QuadTree = {};
+
+    this._layerNumber_TreeObjects = {}; 
+    this._waitingList=[];
+
+    this.count=0;
+    this.pCan1 = undefined;
+    this.pCan2 = undefined;
+
+
+
+};
+
+
+Jasper.CollisionManager.prototype = {
+    _registerCollidableObject: function(obj){
+
+        try{
+        if(obj.getLayer() === undefined){
+            this._waitingList.push(obj);
+            return;
+        }
+        }
+        catch(c){
+            console.log(obj);
+            throw Error(c);
+        }
+        if(this._layerNum_QuadTree[obj.getLayer().getLayerNumber()] === undefined){
+
+            args = {
+               // mandatory fields
+                x:0,
+                y:0,
+                w:500,//obj.getLayer().getWorldSize().x,
+                h:500,//obj.getLayer().getWorldSize().y,
+                      
+            };
+
+    
+            this._layerNum_QuadTree[obj.getLayer().getLayerNumber()] = QUAD.init(args);
+        }
+
+        if(this._layerNumber_Objects[obj.getLayer().getLayerNumber()] === undefined){
+            this._layerNumber_Objects[obj.getLayer().getLayerNumber()] = [];
+            this._layerNumber_TreeObjects[obj.getLayer().getLayerNumber()] = [];
+        }
+
+        if(this._hasAlreadyRegistered(obj) === false){
+            this._layerNumber_Objects[obj.getLayer().getLayerNumber()].push(obj);
+        }
+
+    },
+
+    _clearWaiting: function(obj){
+        
+        len=this._waitingList.length;
+
+        for(var i=0;i<len;i++){
+            if(obj === this._waitingList[i]){
+                this._registerCollidableObject(obj);
+                this._waitingList.splice(i,1);
+                break;    
+            }
+            
+        }
+    },
+
+    _hasAlreadyRegistered: function(obj){
+
+        objs = this._layerNumber_Objects[obj.getLayer().getLayerNumber()];
+        len=objs.length;
+        registered=false;
+
+        for(var i=0;i<len;i++){
+            if(obj == objs[i])
+                registered = true;
+        }
+        return registered;
+    },
+
+
+    calculateCollisions: function(){
+       //console.log("count:"+this.count);
+        this.count=0;
+
+        
+
+        for(var layerNum in this._layerNum_QuadTree){
+
+            tree = this._layerNum_QuadTree[layerNum];
+            tree.clear();
+
+            var len = this._layerNumber_Objects[layerNum].length;
+            //console.log("layer"+layerNum+" objsinsert:"+len);
+            for(var i=0; i<len; i++){
+                var obj = this._layerNumber_Objects[layerNum][i];
+                var treeobj = {
+                    x:Math.floor(obj.posX),//obj. worldX,
+                    y:Math.floor(obj.posY),//obj.worldY,
+                    h: obj.height,
+                    w: obj.width,
+                    obj: obj
+                };
+                tree.insert(treeobj);
+                this._layerNumber_TreeObjects[layerNum].push(treeobj);
+
+                
+            }
+
+            this._activateCollisionsInLayer(layerNum);
+        }
+        
+    },
+    //TESTS
+    pixelPerfectTest: function(obj,ctx,left,top){
+        obj.getRendererBehavior().renderAtPos(ctx, [-left,-top]);
+    },
+    pixelPerfectTest2: function(ctx){
+        var imgData = ctx.getImageData(0,0,1000,1000);
+    var pixel = [];
+    for(i=0;i<1000;i++){
+        pixel[i] = [];
+        for(j=0;j<1000;j++){
+            pixel[i][j] = imgData.data[i*1000*4 + j*4 + 3];
+            if(pixel[i][j] != 0) {
+            //console.log(pixel[i][j]);
+            //console.log(imgData.data[i*1000*4 + j*4 + 0],imgData.data[i*1000*4 + j*4 + 1],imgData.data[i*1000*4 + j*4 + 2],imgData.data[i*1000*4 + j*4 + 3])
+                imgData.data[i*1000*4 + j*4 + 0] = 0;
+               imgData.data[i*1000*4 + j*4 + 1] = 0;
+                imgData.data[i*1000*4 + j*4 + 2] = 0;
+                imgData.data[i*1000*4 + j*4 + 3] = 255;
+            }
+
+
+        }
+    } 
+    ctx.putImageData(imgData,0,0,0,0,1000,1000);
+    },
+    //
+
+    _activateCollisionsInLayer: function(layerNum){
+        var len = this._layerNumber_Objects[layerNum].length;
+        var tree = this._layerNum_QuadTree[layerNum];
+        //TEST
+        testctx = Jasper._core._getTestCanvas();//testctx.clearRect(0,0,300,300);
+        //testctx.clearRect(0,0,1000,1000);
+
+        //testctx.save();
+        this.pCan1 = document.getElementById("pcan1");
+            if(this.pCan1 === null){
+                this.pCan1 = document.createElement("canvas");
+                this.pCan1.id ="pcan1";
+                
+            }
+            this.pCan2 = document.getElementById("pcan2");
+            if(this.pCan2 === null){
+                this.pCan2 = document.createElement("canvas");
+                this.pCan2.id ="pcan2";
+                
+            }
+            pCtx1 = this.pCan1.getContext("2d");
+            pCtx2 = this.pCan2.getContext("2d")
+            
+                                    
+        //
+        var done = [];
+            for(var i=0; i<len; i++){
+
+                var obj = this._layerNumber_Objects[layerNum][i];
+
+                var search = this._layerNumber_TreeObjects[layerNum][i];
+                done[search.obj._getObjectId()] = true;
+                var collidedObjs = tree.retrieve(search);
+                   // Jasper._collisionManager.count++;
+                    //this.count++;
+                var len2 = collidedObjs.length;
+
+
+
+                for(var j=0; j<len2; j++){
+                    var item = collidedObjs[j];
+                    
+                    if( done[item.obj._getObjectId() ] !== true ){
+
+                            //Jasper._collisionManager.count++;
+                            
+                            // s - search
+                            // i - item
+                            // p - overlap (pixel perfect)
+                            // 
+                            sX1 = search.x;
+                            sX2 = sX1 + search.w;
+                            sY1 = search.y;
+                            sY2 = sY1 + search.h;
+                            iX1 = item.x;
+                            iX2 = iX1 + item.w;
+                            iY1 = item.y;
+                            iY2 = iY1 + item.h;
+
+
+                            if  (sX1 < iX2 && 
+                                sX2 > iX1 && 
+                                sY1 < iY2 && 
+                                sY2 > iY1){
+                                    //Jasper._collisionManager.count++;
+                                    //Jasper._collisionManager.count++;
+                                    //TESTS
+                                    
+
+
+                                    //console.log("max",sX1,iX1);
+                                    pX1 = Math.max(sX1,iX1);
+                                    pX2 = Math.min(sX2,iX2);
+                                    pY1 = Math.max(sY1,iY1);
+                                    pY2 = Math.min(sY2,iY2);
+                                    
+
+                                    this.pCan1.width = pX2-pX1;
+                                    this.pCan1.height = pY2-pY1;
+                                    pCtx1.clearRect(0,0,this.pCan1.width,this.pCan1.height);
+
+
+                                    this.pCan2.width = pX2-pX1;
+                                    this.pCan2.height = pY2-pY1;
+                                    pCtx2.clearRect(0,0,this.pCan2.width,this.pCan2.height);
+                                    //console.log("left",pX1, pY1);
+
+                                    
+                                    
+
+                                    
+
+
+
+                                    if(sX1<iX1){
+
+                                        
+                                        if(sY1<iY1){
+                                            Jasper._collisionManager.pixelPerfectTest(search.obj, pCtx1 , iX1-sX1 , iY1-sY1);
+                                            Jasper._collisionManager.pixelPerfectTest(item.obj, pCtx2 , 0 , 0);
+                                            
+                                        }
+                                        else{
+                                            //console.log("asdasdasd");
+                                            Jasper._collisionManager.pixelPerfectTest(search.obj, pCtx1 , iX1-sX1 , 0);
+                                            Jasper._collisionManager.pixelPerfectTest(item.obj, pCtx2 , 0 , sY1-iY1);
+                                            
+                                        }
+                                        
+                                    }
+                                    else{
+                                        if(sY1<iY1){
+                                            Jasper._collisionManager.pixelPerfectTest(search.obj, pCtx1 , 0 , iY1-sY1);
+                                            Jasper._collisionManager.pixelPerfectTest(item.obj, pCtx2 , sX1-iX1 , 0);
+                                            
+                                        }
+                                        else{
+                                            //console.log("asdasdasd");
+                                            Jasper._collisionManager.pixelPerfectTest(search.obj, pCtx1 , 0 , 0);
+                                            Jasper._collisionManager.pixelPerfectTest(item.obj, pCtx2 , sX1-iX1 , sY1-iY1);
+                                            
+                                        }
+                                    }
+
+                                    var collided = false;
+                                    var data1 = pCtx1.getImageData(0,0,this.pCan1.width, this.pCan1.height);
+                                    //console.log(data1)
+                                    var data2 = pCtx2.getImageData(0,0,this.pCan2.width, this.pCan2.height);
+                                    //pCtx3.fillStyle = "white";
+                                    //pCtx3.fillRect(0,0,pCan3.width, pCan3.height);
+                                                
+                                    for(var i=0;i<this.pCan1.width; i++){
+                                        
+                                        //pixel[i] = [];
+                                        for(var j=0; j<this.pCan1.height; j++){
+
+                                            index = (i + j * this.pCan1.width) * 4;
+                                            
+
+                                            //pCtx3.fillStyle = "black";
+                                            //pCtx3.fillRect(i,j,1, 1);
+                                            //console.log("Perfect Collision");
+                                            //pixel[i][j] = imgData.data[i*500*4 + j*4 + 3];
+                                            //console.log(data2.data);
+                                            if(data1.data[index+3]!= 0 && data2.data[index+3]!=0){
+                                                //console.log("Perfect Collisionxxxx");
+                                                
+
+                                                    console.log("Perfect Collision");
+                                                    //pCtx3.fillStyle = "red";
+                                                    //pCtx3.fillRect(0,0,pCan3.width, pCan3.height);
+                                                    search.obj.getBehavior("collision").onCollide(item.obj);
+                                                    item.obj.getBehavior("collision").onCollide(search.obj);
+                                        
+                                                    collided=true
+                                                    break;
+                                                    //break;
+                                                
+                                            }
+
+
+
+                                        }
+                                        if(collided == true)
+                                            break;
+                                    } 
+
+
+
+                                    
+
+                                    //throw Error("stop");
+                                  
+                                    //this.pixelPerfectTest2(pCtx1, pCtx2);
+                                    //testctx.restore();   
+
+                        }
+                    }
+                }
+
+                
+                
+                /*var colLen = collidedObjs.length;
+                //console.log(collidedObjs);
+                console.log("insame layer"+ colLen +" choildren count "+tree.root.children.length);
+
+                for(var j=0; j<colLen; j++){
+                    //Collision check : basic rectangle without rotation
+                    if  (obj.x < (collidedObjs[j].obj.x + collidedObjs[j].obj.width) && 
+                        (obj.x+obj.width) > collidedObjs[j].obj.X1 && 
+                        obj.y < (collidedObjs[j].obj.y + collidedObjs[j].obj.height) && 
+                        (obj.y+obj.height) > collidedObjs[j].obj.y){
+
+                            obj.getBehavior("collision").onCollide(collidedObjs[j].obj);
+                    }
+                }*/
+                
+            }
+            //this.pixelPerfectTest2(testctx);
+            this._layerNumber_TreeObjects[layerNum].length = 0;
+    }
+
+
+
+    
+
+
+    
+
+};;

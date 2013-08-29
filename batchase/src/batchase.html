@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+    canvas {
+        border: red solid thin;
+    }
+    </style>
+    <title></title>
+</head>
+<body>
+<div id="container"></div>
+<script src="../dist/JasperEngine.js"></script>
+
+
+<script>
+
+
+
+    var gameCore = new Jasper.Core({
+        canvasHeight: 700,
+        canvasWidth: 1400,
+        container: "container"
+    }).init();
+
+    var gameScene = new Jasper.Scene({
+        name: "main",
+        worldW: 1400,
+        worldH: 700,
+    });
+
+    gameCore.addScene(gameScene)
+    .startScene(gameScene);
+
+    var mouseManager = gameCore.getMouseManager();
+
+    var layer0 = new Jasper.Layer({name:"bg"});
+    gameScene.addLayer(layer0);
+
+    var map = new Jasper.Object("map");
+    //map.addBehavior("sprite").setSprite("../assets/map.png").setHeight(700).setWidth(1400);
+    layer0.addObject(map);
+
+    var mainLayer = new Jasper.Layer({name:"main"});
+    gameScene.addLayer(mainLayer);
+
+    var attract = gameCore.createBehavior("attract",{speed:1.0, target:undefined},{
+            onUpdate: function(dt){
+
+                if(this.target !== undefined){
+                    parent=this.getParentObject();
+                    ///////////////////////////////////////////////////////////pos = parent.getAnchorPos();
+                    pos = parent.getPos();
+                    ///////////////////////////////////////////////////////////var targetPos = this.target.getAnchorPos();
+                    var targetPos = this.target.getPos();
+
+                    var dist = Math.sqrt(Math.pow(targetPos[0]-pos[0],2)+Math.pow(targetPos[1]-pos[1],2));
+                    parent.setPos(pos[0] + ((targetPos[0]-pos[0])/dist*this.speed), pos[1] + ((targetPos[1]-pos[1])/dist*this.speed));
+                }
+            }
+
+    });
+
+    var repel = gameCore.createBehavior("repel",{speed:1.0, target:undefined},{
+            onUpdate: function(dt){
+                if(this.target !== undefined){
+                    parent=this.getParentObject();
+                    pos = parent.getAnchorPos();                
+                    var targetPos = this.target.getAnchorPos();
+                    
+                    var dist = Math.sqrt(Math.pow(targetPos[0]-pos[0],2)+Math.pow(targetPos[1]-pos[1],2));
+                    parent.setPos(pos[0] - ((targetPos[0]-pos[0])/dist*this.speed), pos[1] - ((targetPos[1]-pos[1])/dist*this.speed));
+                
+                }
+            }
+
+    });
+
+    gameCore.createBehavior("chaseMouse",{speed:1.0},{
+        onUpdate: function(dt){
+                parent=this.getParentObject();
+                ////////////////////////////////////////////////////////////////pos = parent.getAnchorPos();
+                pos = parent.getPos();
+                var mousePos = mouseManager.getMousePos();
+
+                var dist = Math.sqrt(Math.pow(mousePos[0]-pos[0],2)+Math.pow(mousePos[1]-pos[1],2));
+                if(dist > 3)
+                    ///////////////////////////////////////////////////////////parent.setAnchorPos(pos[0] + ((mousePos[0]-pos[0])/dist*this.speed), pos[1] + ((mousePos[1]-pos[1])/dist*this.speed));
+                    parent.setPos(pos[0] + ((mousePos[0]-pos[0])/dist*this.speed), pos[1] + ((mousePos[1]-pos[1])/dist*this.speed));
+                
+            }
+    });
+    gameCore.createBehavior("spreadOut",{speed:0.0, spreading:false, sx:0,sy:0},{
+        onUpdate: function(dt){
+                var parent=this.getParentObject();
+                var len = bats.length;
+                if(!this.spreading){
+                        for(var i=0;i<len;i++){
+                            if(bats[i] != parent){
+                                if(Math.abs(parent.getPosX()-bats[i].getPosX())<10 && Math.abs(parent.getPosY()-bats[i].getPosY())<10){
+                                    this.spreading=true;
+                                    this.speed = 3.0;
+                                    var dx = parent.getPosX()-bats[i].getPosX();
+                                    var dy = parent.getPosY()-bats[i].getPosY();
+                                    var dist = Math.sqrt(Math.pow(dx,2)+Math.pow(dy,2));
+                                    this.sx = dx/dist;
+                                    this.sy = dy/dist;
+                                    //console.log("im here")
+                                    break;
+                                           
+                                }
+                            }
+                        }
+                
+            }
+
+            else{
+                this.speed-=0.1;
+                if(this.speed<=0.0)
+                    this.spreading=false;
+                var pos = parent.getPos();
+                parent.setPos(pos[0]+(this.sx*this.speed) ,pos[1]+(this.sy*this.speed));
+
+            }
+                
+                
+                
+            }
+    });
+
+    gameCore.createBehavior("rotateToMouse", {},{
+        onUpdate: function(dt){
+                parent=this.getParentObject();
+                ////////////////////////////////////////////////////////////////////////////////////////////////pos = parent.getAnchorPos();
+                pos = parent.getPos();
+                var mousePos = mouseManager.getMousePos();
+
+                var radian = Math.atan2(mousePos[1]-pos[1], mousePos[0]-pos[0]);
+                var dist = Math.sqrt(Math.pow(mousePos[0]-pos[0],2)+Math.pow(mousePos[1]-pos[1],2));
+                if(dist>1)
+                    parent.setRotationRadian(radian);
+
+        }
+    });
+
+    chaseFly = {
+        spritesheet : "../assets/bats.png",
+        actions: {
+            chase: {
+                from:0,
+                to:6,
+                duration: 200,
+                loop: true
+            }
+           
+        },
+        frameWidth: 50,
+        frameHeight: 35,
+        width:64,
+        height:32
+
+    };
+    heroFly = {
+        spritesheet : "../assets/bat.png",
+        actions: {
+            fly: {
+                from:0,
+                to:14,
+                duration: 200,
+                loop: true
+            }
+           
+        },
+        frameWidth: 182,
+        frameHeight: 257,
+        width:35,
+        height:50
+
+    };
+    monitorCount = true;
+    batCount = 0;
+    maxBats = 50;
+    bats = [];
+    var hero = new Jasper.Object("hero");
+    hero.addBehavior("spritesheet").attr(heroFly).runAction("fly");
+    hero.addBehavior("chaseMouse").locals({speed:5.0});
+    //hero.addBehavior("rotateToMouse");
+    //hero.addBehavior("dropSaw").locals({hero: hero});
+    
+    /*****
+
+    *********** SEARCH FOR ANCHOR POSITION   **********************
+
+    *//////
+    //hero.setAnchorPos(gameCore.canvasWidth/2, gameCore.canvasHeight/2);
+    mainLayer.addObject(hero);
+    
+
+    function makeBat(){
+        var bat = new Jasper.Object("bat");
+        bat.onAdd = function(){batCount++;}
+        bat.onRemove = function(){batCount--;}
+
+
+        bat.setPos( Math.floor(Math.random()*1350), Math.floor(Math.random()*700));
+        
+        //bat.addBehavior("sprite").setSprite("../assets/ball2.png").setHeight(10).setWidth(10);
+        setTimeout(function(){bat.addBehavior("spritesheet").attr(chaseFly).runAction("chase");}, Math.floor(Math.random()*5000));
+        bat.addBehavior("attract").locals({target : hero, speed:2.0});//0.5});
+        bat.addBehavior("spreadOut");
+        /*bat.addBehavior("collision").locals({
+            onCollide: function(colObj){
+                if( colObj.getName() ==="saw" ){
+                    //console.log("sadasdasd");
+                    mainLayer.removeObject(this.getParentObject());
+                }
+            }
+
+        });*/
+        mainLayer.addObject(bat);
+        bats.push(bat);
+        
+    }
+
+    setInterval(function(){
+        if(monitorCount === true)
+            if(batCount < maxBats/5){
+                monitorCount = false;
+                startSpawn(maxBats*0.8);
+            }
+
+    },1000);
+
+    function startSpawn(targetCount){
+        setInterval(function(){
+            if(batCount < targetCount)
+                makeBat();
+            else
+            {
+                monitorCount = true;
+                this.clearInterval();
+            }
+        },5);
+    }
+
+     
+
+ 
+
+
+
+</script>
+
+
+
+
+</body>
+</html>

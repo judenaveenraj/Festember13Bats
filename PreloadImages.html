@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Preload Images example</title>
+
+	<link rel="stylesheet" href="./assets/demoStyles.css" />
+</head>
+<body onload="init()">
+
+	<header id="header" class="PreloadJS">
+	    <h1><span class="text-product">Preload<strong>JS</strong></span> Image Gallery</h1>
+	    <p>This sample loads a number of images, and adds them to a canvas stage when they are complete. Click the image
+		    to view the next one. Note that when loading images locally, you need to ensure that PreloadJS
+		    uses tag loading to avoid cross-origin errors. Mouse interaction on images may not work locally either.</p>
+	</header>
+    <p id="counter">
+        hello
+    </p>
+
+    <canvas id="myCanvas" width="960" height="400"></canvas>
+
+    <script src="./assets/easeljs-NEXT.min.js"></script>
+    <script src="./assets/tweenjs-NEXT.min.js"></script>
+    <script type="text/javascript" src="../src/easeljs/events/EventDispatcher.js"></script>
+    <script type="text/javascript" src="../src/preloadjs/AbstractLoader.js"></script>
+    <script type="text/javascript" src="../src/preloadjs/LoadQueue.js"></script>
+    <script type="text/javascript" src="../src/preloadjs/TagLoader.js"></script>
+    <script type="text/javascript" src="../src/preloadjs/XHRLoader.js"></script>
+
+    <!-- We also provide hosted minified versions of all CreateJS libraries.
+      http://code.createjs.com -->
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+
+    <script type="text/javascript">
+
+        var imageContainer;
+        var currentImage;
+        var loaderWidth;
+        var loaderColor;
+  		var borderPadding;
+        var preload;
+		var oldItem;
+
+
+
+            manifest = [
+                {src:"image0.jpg", id:"image0"},
+                {src:"image1.jpg", id:"image1"},
+                {src:"image2.jpg", id:"image2"},
+                {src:"image3.jpg", id:"image3"}
+            ];
+
+            function init(){
+                preload = new createjs.LoadQueue(true, "assets/");
+                console.log("asdasda");
+            // Use this instead to use tag loading
+            //preload = new createjs.PreloadJS(false);
+
+            preload.addEventListener("progress", handleProgress);
+            preload.addEventListener("complete", handleComplete);
+            preload.loadManifest(manifest);
+
+            createjs.Ticker.setFPS(30);
+        }
+
+        function stop() {
+            if (preload != null) { preload.close(); }
+        }
+
+        function handleProgress(event) {
+            if(event)
+            document.getElementById("counter").innerHTML = (event.loaded*100.0).toString() ;
+        }
+
+        function handleComplete(event) {
+            document.getElementById("counter").innerHTML = "Done";
+        }
+
+    </script>
+
+</body>
+</html>
